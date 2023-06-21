@@ -131,11 +131,13 @@ def eval_epoch(val_loader, model, model_fn, epoch):
 
 if __name__ == '__main__':
     if cfg.dist == True:
-        raise NotImplementedError
-        # num_gpus = torch.cuda.device_count()
-        # dist.init_process_group(backend='nccl', rank=cfg.local_rank, 
-        #     world_size=num_gpus)
-        # torch.cuda.set_device(cfg.local_rank)
+        num_gpus = 4
+        os.environ['MASTER_ADDR'] = 'localhost'
+        os.environ['MASTER_PORT'] = '12334'
+        local_rank = int(os.environ["LOCAL_RANK"])
+        print('num_gpus: ', num_gpus)
+        dist.init_process_group(backend='nccl', init_method="env://", world_size=num_gpus)
+        torch.cuda.set_device(local_rank)
 
     from util.log import logger
     import util.utils as utils
@@ -197,8 +199,9 @@ if __name__ == '__main__':
         cfg.config.split('/')[-1][:-5], use_cuda)      
 
 
-    if cfg.dist:
+    if cfg.dist:        
         # model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+        print('distributed 실행중')
         model = torch.nn.parallel.DistributedDataParallel(
                 model.cuda(cfg.local_rank),
                 device_ids=[cfg.local_rank],

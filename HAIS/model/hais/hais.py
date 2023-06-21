@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
-import spconv
-from spconv.modules import SparseModule
+import spconv.pytorch as spconv
+from spconv.pytorch.modules import SparseModule
 import functools
 from collections import OrderedDict
 import sys
@@ -36,7 +36,9 @@ class ResidualBlock(SparseModule):
     def forward(self, input):
         identity = spconv.SparseConvTensor(input.features, input.indices, input.spatial_shape, input.batch_size)
         output = self.conv_branch(input)
-        output.features += self.i_branch(identity).features
+        new_features = output.features + self.i_branch(identity).features
+        # 새로운 SparseConvTensor 객체를 생성합니다.
+        output = output.replace_feature(new_features)
 
         return output
 
@@ -95,7 +97,9 @@ class UBlock(nn.Module):
             output_decoder = self.conv(output)
             output_decoder = self.u(output_decoder)
             output_decoder = self.deconv(output_decoder)
-            output.features = torch.cat((identity.features, output_decoder.features), dim=1)
+            new_features = torch.cat((identity.features, output_decoder.features), dim=1)
+            # 새로운 SparseConvTensor 객체를 생성합니다.
+            output = output.replace_feature(new_features)
             output = self.blocks_tail(output)
         return output
 
@@ -414,6 +418,7 @@ def model_fn_decorator(test=False):
 
         voxel_feats = hais_ops.voxelization(feats, v2p_map, cfg.mode)  # (M, C), float, cuda
 
+        
         input_ = spconv.SparseConvTensor(voxel_feats, voxel_coords.int(), spatial_shape, cfg.batch_size)
 
         ret = model(input_, p2v_map, coords_float, coords[:, 0].int(), batch_offsets, epoch, 'train')

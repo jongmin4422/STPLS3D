@@ -19,6 +19,9 @@ SCF-Net/log*.txt
 KPConv-PyTorch/results/
 KPConv-PyTorch/test/
 
+HAIS/lib/
+
+exp
 docker_scripts/
 *.code-workspace
 **/build
